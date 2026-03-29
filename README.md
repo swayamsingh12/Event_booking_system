@@ -197,7 +197,6 @@ DB_NAME=event_booking_db
 
 > Leave DB_PASSWORD blank if your MySQL has no password set.
 
-> Never commit `.env` to GitHub — it is already listed in `.gitignore`.
 
 ---
 
