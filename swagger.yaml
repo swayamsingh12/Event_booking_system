@@ -1,0 +1,677 @@
+openapi: 3.0.0
+info:
+  title: Event Booking System API
+  description: |
+    A Mini Event Management System where users can browse events and book tickets.
+    
+    ## Features
+    - Browse upcoming events
+    - Create new events
+    - Book tickets with unique booking codes
+    - View user bookings
+    - Record event attendance via booking code
+    
+    ## Race Condition Handling
+    Ticket booking uses MySQL transactions with `SELECT ... FOR UPDATE` 
+    to prevent overselling under concurrent requests.
+  version: 1.0.0
+  contact:
+    name: Event Booking System
+
+servers:
+  - url: http://localhost:3000
+    description: Local Development Server
+
+tags:
+  - name: Users
+    description: User management and booking history
+  - name: Events
+    description: Event management
+  - name: Bookings
+    description: Ticket booking operations
+  - name: Attendance
+    description: Event attendance check-in
+
+paths:
+
+  # ─────────────────────────────────────────
+  # USERS
+  # ─────────────────────────────────────────
+  /users:
+    post:
+      tags:
+        - Users
+      summary: Create a new user
+      description: Register a new user with name and email.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+            example:
+              name: John Doe
+              email: john@example.com
+      responses:
+        '201':
+          description: User created successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/User'
+              example:
+                success: true
+                message: User created successfully
+                data:
+                  id: 1
+                  name: John Doe
+                  email: john@example.com
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '409':
+          description: Email already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                message: A user with this email already exists
+                data: null
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /users/{id}/bookings:
+    get:
+      tags:
+        - Users
+      summary: Get all bookings for a user
+      description: Retrieve all bookings made by a specific user including event details.
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          description: The user ID
+          example: 1
+      responses:
+        '200':
+          description: User bookings retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          user:
+                            $ref: '#/components/schemas/User'
+                          bookings:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/BookingWithEvent'
+              example:
+                success: true
+                message: User bookings retrieved successfully
+                data:
+                  user:
+                    id: 1
+                    name: John Doe
+                    email: john@example.com
+                  bookings:
+                    - booking_id: 1
+                      booking_code: 550e8400-e29b-41d4-a716-446655440000
+                      tickets_count: 2
+                      booking_date: "2025-06-01T10:00:00.000Z"
+                      event_id: 1
+                      event_title: Tech Conference 2025
+                      event_description: Annual tech conference
+                      event_date: "2025-08-15T09:00:00.000Z"
+                      total_capacity: 500
+                      remaining_tickets: 498
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ─────────────────────────────────────────
+  # EVENTS
+  # ─────────────────────────────────────────
+  /events:
+    get:
+      tags:
+        - Events
+      summary: List all upcoming events
+      description: Returns all events where the event date is in the future, ordered by date ascending.
+      responses:
+        '200':
+          description: Upcoming events retrieved successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Event'
+              example:
+                success: true
+                message: Upcoming events retrieved successfully
+                data:
+                  - id: 1
+                    title: Tech Conference 2025
+                    description: Annual tech conference
+                    date: "2025-08-15T09:00:00.000Z"
+                    total_capacity: 500
+                    remaining_tickets: 498
+                    created_at: "2025-06-01T10:00:00.000Z"
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    post:
+      tags:
+        - Events
+      summary: Create a new event
+      description: Create a new event with title, description, date and capacity.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateEventRequest'
+            example:
+              title: Tech Conference 2025
+              description: Annual technology conference with industry leaders
+              date: "2025-08-15T09:00:00.000Z"
+              total_capacity: 500
+      responses:
+        '201':
+          description: Event created successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Event'
+              example:
+                success: true
+                message: Event created successfully
+                data:
+                  id: 1
+                  title: Tech Conference 2025
+                  description: Annual technology conference with industry leaders
+                  date: "2025-08-15T09:00:00.000Z"
+                  total_capacity: 500
+                  remaining_tickets: 500
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ─────────────────────────────────────────
+  # ATTENDANCE
+  # ─────────────────────────────────────────
+  /events/{id}/attendance:
+    post:
+      tags:
+        - Attendance
+      summary: Record event attendance
+      description: |
+        Check in an attendee using their booking code.
+        
+        - Validates the booking code belongs to this event
+        - Prevents double check-in
+        - Records entry time
+        - Returns number of tickets booked
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+          description: The event ID
+          example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AttendanceRequest'
+            example:
+              booking_code: 550e8400-e29b-41d4-a716-446655440000
+      responses:
+        '200':
+          description: Attendance recorded successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AttendanceResponse'
+              example:
+                success: true
+                message: Attendance recorded successfully
+                data:
+                  event_id: 1
+                  event_title: Tech Conference 2025
+                  booking_code: 550e8400-e29b-41d4-a716-446655440000
+                  tickets_booked: 2
+                  entry_time: "2025-08-15T09:05:00.000Z"
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          description: Event or booking code not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                message: Invalid booking code for this event
+                data: null
+        '409':
+          description: Already checked in
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                message: This booking has already been checked in
+                data: null
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  # ─────────────────────────────────────────
+  # BOOKINGS
+  # ─────────────────────────────────────────
+  /bookings:
+    post:
+      tags:
+        - Bookings
+      summary: Book a ticket for an event
+      description: |
+        Books a ticket for a user. 
+        
+        **Race Condition Handling:** Uses MySQL transaction with `SELECT ... FOR UPDATE` 
+        to lock the event row and prevent ticket overselling under concurrent requests.
+        
+        A unique UUID booking code is generated and returned upon success.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBookingRequest'
+            example:
+              user_id: 1
+              event_id: 1
+              tickets_count: 2
+      responses:
+        '201':
+          description: Booking confirmed successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/BookingConfirmation'
+              example:
+                success: true
+                message: Booking confirmed successfully
+                data:
+                  booking_id: 1
+                  booking_code: 550e8400-e29b-41d4-a716-446655440000
+                  user_id: 1
+                  event_id: 1
+                  event_title: Tech Conference 2025
+                  tickets_count: 2
+                  booking_date: "2025-06-01T10:00:00.000Z"
+        '400':
+          description: Validation error or not enough tickets
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                validation_error:
+                  summary: Validation failed
+                  value:
+                    success: false
+                    message: Validation failed
+                    data:
+                      - field: event_id
+                        message: event_id is required
+                no_tickets:
+                  summary: Not enough tickets
+                  value:
+                    success: false
+                    message: Only 1 ticket(s) remaining
+                    data: null
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: User already booked this event
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                success: false
+                message: User has already booked this event
+                data: null
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+# ─────────────────────────────────────────
+# COMPONENTS
+# ─────────────────────────────────────────
+components:
+
+  schemas:
+
+    # ── Request Schemas ──────────────────
+    CreateUserRequest:
+      type: object
+      required:
+        - name
+        - email
+      properties:
+        name:
+          type: string
+          maxLength: 100
+          example: John Doe
+        email:
+          type: string
+          format: email
+          maxLength: 150
+          example: john@example.com
+
+    CreateEventRequest:
+      type: object
+      required:
+        - title
+        - date
+        - total_capacity
+      properties:
+        title:
+          type: string
+          maxLength: 200
+          example: Tech Conference 2025
+        description:
+          type: string
+          nullable: true
+          example: Annual technology conference
+        date:
+          type: string
+          format: date-time
+          example: "2025-08-15T09:00:00.000Z"
+        total_capacity:
+          type: integer
+          minimum: 1
+          example: 500
+
+    CreateBookingRequest:
+      type: object
+      required:
+        - user_id
+        - event_id
+      properties:
+        user_id:
+          type: integer
+          minimum: 1
+          example: 1
+        event_id:
+          type: integer
+          minimum: 1
+          example: 1
+        tickets_count:
+          type: integer
+          minimum: 1
+          default: 1
+          example: 2
+
+    AttendanceRequest:
+      type: object
+      required:
+        - booking_code
+      properties:
+        booking_code:
+          type: string
+          format: uuid
+          example: 550e8400-e29b-41d4-a716-446655440000
+
+    # ── Response Schemas ─────────────────
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: John Doe
+        email:
+          type: string
+          example: john@example.com
+
+    Event:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        title:
+          type: string
+          example: Tech Conference 2025
+        description:
+          type: string
+          nullable: true
+          example: Annual technology conference
+        date:
+          type: string
+          format: date-time
+          example: "2025-08-15T09:00:00.000Z"
+        total_capacity:
+          type: integer
+          example: 500
+        remaining_tickets:
+          type: integer
+          example: 498
+        created_at:
+          type: string
+          format: date-time
+          example: "2025-06-01T10:00:00.000Z"
+
+    BookingConfirmation:
+      type: object
+      properties:
+        booking_id:
+          type: integer
+          example: 1
+        booking_code:
+          type: string
+          format: uuid
+          example: 550e8400-e29b-41d4-a716-446655440000
+        user_id:
+          type: integer
+          example: 1
+        event_id:
+          type: integer
+          example: 1
+        event_title:
+          type: string
+          example: Tech Conference 2025
+        tickets_count:
+          type: integer
+          example: 2
+        booking_date:
+          type: string
+          format: date-time
+          example: "2025-06-01T10:00:00.000Z"
+
+    BookingWithEvent:
+      type: object
+      properties:
+        booking_id:
+          type: integer
+          example: 1
+        booking_code:
+          type: string
+          format: uuid
+          example: 550e8400-e29b-41d4-a716-446655440000
+        tickets_count:
+          type: integer
+          example: 2
+        booking_date:
+          type: string
+          format: date-time
+          example: "2025-06-01T10:00:00.000Z"
+        event_id:
+          type: integer
+          example: 1
+        event_title:
+          type: string
+          example: Tech Conference 2025
+        event_description:
+          type: string
+          nullable: true
+          example: Annual technology conference
+        event_date:
+          type: string
+          format: date-time
+          example: "2025-08-15T09:00:00.000Z"
+        total_capacity:
+          type: integer
+          example: 500
+        remaining_tickets:
+          type: integer
+          example: 498
+
+    AttendanceResponse:
+      type: object
+      properties:
+        event_id:
+          type: integer
+          example: 1
+        event_title:
+          type: string
+          example: Tech Conference 2025
+        booking_code:
+          type: string
+          format: uuid
+          example: 550e8400-e29b-41d4-a716-446655440000
+        tickets_booked:
+          type: integer
+          example: 2
+        entry_time:
+          type: string
+          format: date-time
+          example: "2025-08-15T09:05:00.000Z"
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Operation successful
+        data:
+          type: object
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+          example: Something went wrong
+        data:
+          nullable: true
+          example: null
+
+    ValidationErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+          example: Validation failed
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+                example: email
+              message:
+                type: string
+                example: Must be a valid email address
+
+  responses:
+    ValidationError:
+      description: Input validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationErrorResponse'
+          example:
+            success: false
+            message: Validation failed
+            data:
+              - field: title
+                message: Title is required
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            message: User not found
+            data: null
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            message: Internal Server Error
+            data: null

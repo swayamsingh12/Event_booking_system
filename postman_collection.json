@@ -1,0 +1,315 @@
+{
+  "info": {
+    "name": "Event Booking System",
+    "description": "Complete API collection for the Event Booking System — Junior Node.js Developer Selection Test",
+    "_postman_id": "event-booking-system-v1",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "👤 Users",
+      "item": [
+        {
+          "name": "Create User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/users",
+              "host": ["{{base_url}}"],
+              "path": ["users"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john@example.com\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Create a new user with name and email."
+          },
+          "response": [
+            {
+              "name": "201 - User Created",
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"User created successfully\",\n  \"data\": {\n    \"id\": 1,\n    \"name\": \"John Doe\",\n    \"email\": \"john@example.com\"\n  }\n}"
+            },
+            {
+              "name": "400 - Validation Error",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Validation failed\",\n  \"data\": [\n    { \"field\": \"email\", \"message\": \"Must be a valid email address\" }\n  ]\n}"
+            },
+            {
+              "name": "409 - Email Already Exists",
+              "status": "Conflict",
+              "code": 409,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"A user with this email already exists\",\n  \"data\": null\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get User Bookings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/users/1/bookings",
+              "host": ["{{base_url}}"],
+              "path": ["users", "1", "bookings"]
+            },
+            "description": "Get all bookings made by a specific user, including full event details."
+          },
+          "response": [
+            {
+              "name": "200 - Bookings Found",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"User bookings retrieved successfully\",\n  \"data\": {\n    \"user\": {\n      \"id\": 1,\n      \"name\": \"John Doe\",\n      \"email\": \"john@example.com\"\n    },\n    \"bookings\": [\n      {\n        \"booking_id\": 1,\n        \"booking_code\": \"550e8400-e29b-41d4-a716-446655440000\",\n        \"tickets_count\": 2,\n        \"booking_date\": \"2025-06-01T10:00:00.000Z\",\n        \"event_id\": 1,\n        \"event_title\": \"Tech Conference 2025\",\n        \"event_description\": \"Annual technology conference\",\n        \"event_date\": \"2025-08-15T09:00:00.000Z\",\n        \"total_capacity\": 500,\n        \"remaining_tickets\": 498\n      }\n    ]\n  }\n}"
+            },
+            {
+              "name": "404 - User Not Found",
+              "status": "Not Found",
+              "code": 404,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"User not found\",\n  \"data\": null\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "📅 Events",
+      "item": [
+        {
+          "name": "Get All Upcoming Events",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/events",
+              "host": ["{{base_url}}"],
+              "path": ["events"]
+            },
+            "description": "Returns all events where date is in the future, ordered by date ascending."
+          },
+          "response": [
+            {
+              "name": "200 - Events List",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Upcoming events retrieved successfully\",\n  \"data\": [\n    {\n      \"id\": 1,\n      \"title\": \"Tech Conference 2025\",\n      \"description\": \"Annual technology conference\",\n      \"date\": \"2025-08-15T09:00:00.000Z\",\n      \"total_capacity\": 500,\n      \"remaining_tickets\": 498,\n      \"created_at\": \"2025-06-01T10:00:00.000Z\"\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Create Event",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/events",
+              "host": ["{{base_url}}"],
+              "path": ["events"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Tech Conference 2026\",\n  \"description\": \"Annual technology conference with industry leaders\",\n  \"date\": \"2026-08-15T09:00:00.000Z\",\n  \"total_capacity\": 500\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Create a new event. remaining_tickets is automatically set equal to total_capacity."
+          },
+          "response": [
+            {
+              "name": "201 - Event Created",
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Event created successfully\",\n  \"data\": {\n    \"id\": 1,\n    \"title\": \"Tech Conference 2026\",\n    \"description\": \"Annual technology conference with industry leaders\",\n    \"date\": \"2026-08-15T09:00:00.000Z\",\n    \"total_capacity\": 500,\n    \"remaining_tickets\": 500\n  }\n}"
+            },
+            {
+              "name": "400 - Validation Error",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Validation failed\",\n  \"data\": [\n    { \"field\": \"title\", \"message\": \"Title is required\" },\n    { \"field\": \"date\", \"message\": \"Event date must be in the future\" }\n  ]\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "🎫 Bookings",
+      "item": [
+        {
+          "name": "Book a Ticket",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/bookings",
+              "host": ["{{base_url}}"],
+              "path": ["bookings"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": 1,\n  \"event_id\": 1,\n  \"tickets_count\": 2\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Books tickets for a user. Uses MySQL transaction with SELECT FOR UPDATE to prevent race conditions. Returns a unique UUID booking_code."
+          },
+          "response": [
+            {
+              "name": "201 - Booking Confirmed",
+              "status": "Created",
+              "code": 201,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Booking confirmed successfully\",\n  \"data\": {\n    \"booking_id\": 1,\n    \"booking_code\": \"550e8400-e29b-41d4-a716-446655440000\",\n    \"user_id\": 1,\n    \"event_id\": 1,\n    \"event_title\": \"Tech Conference 2026\",\n    \"tickets_count\": 2,\n    \"booking_date\": \"2025-06-01T10:00:00.000Z\"\n  }\n}"
+            },
+            {
+              "name": "400 - No Tickets Available",
+              "status": "Bad Request",
+              "code": 400,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Only 1 ticket(s) remaining\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "404 - User or Event Not Found",
+              "status": "Not Found",
+              "code": 404,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Event not found\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "409 - Already Booked",
+              "status": "Conflict",
+              "code": 409,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"User has already booked this event\",\n  \"data\": null\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "✅ Attendance",
+      "item": [
+        {
+          "name": "Record Attendance",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/events/1/attendance",
+              "host": ["{{base_url}}"],
+              "path": ["events", "1", "attendance"]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"booking_code\": \"550e8400-e29b-41d4-a716-446655440000\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Check in an attendee using their booking code. Validates the code belongs to this event, prevents double check-in, and returns the number of tickets booked."
+          },
+          "response": [
+            {
+              "name": "200 - Attendance Recorded",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Attendance recorded successfully\",\n  \"data\": {\n    \"event_id\": 1,\n    \"event_title\": \"Tech Conference 2026\",\n    \"booking_code\": \"550e8400-e29b-41d4-a716-446655440000\",\n    \"tickets_booked\": 2,\n    \"entry_time\": \"2026-08-15T09:05:00.000Z\"\n  }\n}"
+            },
+            {
+              "name": "404 - Invalid Booking Code",
+              "status": "Not Found",
+              "code": 404,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"Invalid booking code for this event\",\n  \"data\": null\n}"
+            },
+            {
+              "name": "409 - Already Checked In",
+              "status": "Conflict",
+              "code": 409,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": false,\n  \"message\": \"This booking has already been checked in\",\n  \"data\": null\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "❤️ Health Check",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": ["{{base_url}}"],
+              "path": ["health"]
+            },
+            "description": "Check if the server is running."
+          },
+          "response": [
+            {
+              "name": "200 - Server Running",
+              "status": "OK",
+              "code": 200,
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"success\": true,\n  \"message\": \"Server is running\"\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
